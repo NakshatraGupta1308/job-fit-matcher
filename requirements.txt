@@ -1,6 +1,9 @@
+# Used by Streamlit Community Cloud to install the web app.
+# The CPU-only PyTorch index keeps the install far smaller than the default GPU build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 click>=8.0
 numpy>=1.22
 pdfplumber>=0.10
 sentence-transformers>=2.2
 streamlit>=1.48
-pytest>=7.0

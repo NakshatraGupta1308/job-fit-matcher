@@ -43,7 +43,7 @@ cd job-fit-matcher
 python -m venv .venv && source .venv/bin/activate
 
 pip install -e ".[embeddings,ui,dev]"   # everything
-# or: pip install -r requirements.txt
+# or: pip install -r requirements.txt  (web app dependencies, CPU-only PyTorch)
 ```
 
 The first run with the embeddings backend downloads the `all-MiniLM-L6-v2` model (about 90 MB) from Hugging Face and caches it. After that it works offline.
