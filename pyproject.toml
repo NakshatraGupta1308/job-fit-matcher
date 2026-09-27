@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resume-matcher"
+version = "0.1.0"
+description = "Score how well a resume fits a job description and suggest honest, tailored bullet edits."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.0",
+    "numpy>=1.22",
+    "pdfplumber>=0.10",
+]
+
+[project.optional-dependencies]
+embeddings = ["sentence-transformers>=2.2"]
+ui = ["streamlit>=1.48"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+resume-matcher = "resume_matcher.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

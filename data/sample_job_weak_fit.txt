@@ -1,0 +1,18 @@
+Machine Learning Engineer, Computer Vision
+
+Responsibilities:
+- Train and deploy deep learning models for real-time object detection on edge devices
+- Build data labeling and augmentation pipelines for large image datasets
+- Optimize model inference latency with TensorRT and quantization
+- Collaborate with hardware engineers to integrate models into embedded systems
+
+Qualifications:
+- MS or PhD in Computer Science, Electrical Engineering, or a related field
+- 3+ years of experience with PyTorch or TensorFlow
+- Strong background in computer vision and convolutional neural networks
+- Proficiency in C++ and Python
+- Experience with CUDA programming
+
+Preferred:
+- Publications at CVPR, ICCV, or NeurIPS
+- Experience with ROS and robotics platforms

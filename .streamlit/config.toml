@@ -1,0 +1,8 @@
+[server]
+# The file watcher crawls every imported module, including the large optional
+# transformers package, which floods the log with import errors. Turn it back on
+# ("auto") while editing the app if you want hot reload.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

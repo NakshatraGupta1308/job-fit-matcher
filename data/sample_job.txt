@@ -1,0 +1,31 @@
+Senior Backend Engineer, Data Platform
+
+About Us
+Northwind Data helps logistics teams make sense of their shipment data. We are a 60-person company with offices in Austin and Denver.
+
+What You'll Do
+- Design, build, and operate scalable backend services and APIs in Python
+- Own data pipelines that ingest millions of shipment events per day
+- Improve the performance and reliability of our PostgreSQL-backed services
+- Partner with product and data science to scope and ship new features
+- Mentor engineers and lead technical design reviews
+
+Requirements
+- 5+ years of professional software engineering experience
+- Strong proficiency in Python and SQL
+- Experience designing RESTful APIs and microservices
+- Hands-on experience with Docker and Kubernetes in production
+- Experience with workflow orchestration tools such as Airflow
+- Solid understanding of monitoring and observability practices
+
+Nice to Have
+- Experience with Kafka or other event streaming platforms
+- Familiarity with Terraform and infrastructure as code
+- Experience with GCP or AWS
+
+Benefits
+- Competitive salary and equity
+- Health, dental, and vision insurance
+- Flexible remote work policy
+
+Northwind Data is an equal opportunity employer.
