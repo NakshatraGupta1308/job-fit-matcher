@@ -17,7 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 embeddings = ["sentence-transformers>=2.2"]
-ui = ["streamlit>=1.48"]
+ui = ["streamlit>=1.48", "reportlab>=4.0"]
+pdf = ["reportlab>=4.0"]
 dev = ["pytest>=7.0"]
 
 [project.scripts]

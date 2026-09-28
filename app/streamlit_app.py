@@ -9,6 +9,7 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from resume_matcher import history as history_store  # noqa: E402
 from resume_matcher.analysis import analyze  # noqa: E402
@@ -17,6 +18,7 @@ from resume_matcher.matcher.scorer import GAP  # noqa: E402
 from resume_matcher.parser.job_parser import parse_job_text  # noqa: E402
 from resume_matcher.parser.resume_parser import parse_resume, parse_resume_text  # noqa: E402
 from resume_matcher.report.report_builder import to_json, to_markdown, to_text  # noqa: E402
+from tailor_panel import render_tailor_panel  # noqa: E402
 
 st.set_page_config(page_title="Resume Matcher", layout="wide")
 
@@ -87,6 +89,7 @@ if st.button("Analyze", type="primary"):
         for a in analyses:
             history_store.record(a)
     st.session_state["analyses"] = analyses
+    st.session_state["backend"] = backend
 
 analyses = st.session_state.get("analyses")
 if analyses:
@@ -102,7 +105,7 @@ if analyses:
         )
 
     tabs = st.tabs([f"{a.job_name[:30]} ({a.score:.0f})" for a in analyses])
-    for tab, a in zip(tabs, analyses):
+    for ti, (tab, a) in enumerate(zip(tabs, analyses)):
         with tab:
             r, g = a.result, a.gaps
             c1, c2, c3 = st.columns(3)
@@ -162,6 +165,8 @@ if analyses:
             d1.download_button("Download markdown", to_markdown(a), file_name="match_report.md", key=f"md_{id(a)}")
             d2.download_button("Download text", to_text(a), file_name="match_report.txt", key=f"txt_{id(a)}")
             d3.download_button("Download JSON", to_json(a), file_name="match_report.json", key=f"json_{id(a)}")
+
+            render_tailor_panel(a, load_embedder(st.session_state.get("backend", backend)), key=f"t{ti}_{id(a)}")
 
 with st.expander("Score history"):
     entries = history_store.load()

@@ -113,7 +113,11 @@ def merge_wrapped_lines(lines: list[str], is_header: Callable[[str], bool]) -> l
         if not cur or not prev or is_bullet(cur) or is_header(cur) or is_header(prev) or DATE_RANGE_RE.search(cur):
             out.append(line)
             continue
-        if prev.endswith((".", "!", "?")) or (cur.isupper() and len(cur) > 3):
+        if prev.endswith((".", "!", "?")) or (cur.isupper() and len(cur) > 3) or prev.startswith("#"):
+            out.append(line)
+            continue
+        if "@" in cur or " | " in cur or re.match(r"(?:https?://|www\.)", cur):
+            # Contact details and "Title | Company" lines are never the tail of a sentence.
             out.append(line)
             continue
         next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""

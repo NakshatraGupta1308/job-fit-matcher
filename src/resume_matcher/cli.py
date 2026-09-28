@@ -137,6 +137,127 @@ def match(
         click.echo(text)
 
 
+@main.command()
+@click.argument("resume", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("job")
+@click.option(
+    "-d", "--output-dir", type=click.Path(file_okay=False, path_type=Path), default=Path("tailored"), show_default=True,
+    help="Where to write the tailored resume and gap notes.",
+)
+@click.option("--backend", type=click.Choice(BACKENDS), default="auto", show_default=True, help="Embedding backend.")
+@click.option("--model", default=DEFAULT_MODEL, show_default=True, help="sentence-transformers model name or path.")
+@click.option("--max-gaps", type=click.IntRange(1, 30), default=10, show_default=True, help="How many gaps to walk through.")
+def tailor(resume: Path, job: str, output_dir: Path, backend: str, model: str, max_gaps: int) -> None:
+    """Walk through edits and gaps for one JOB, then write a tailored resume.
+
+    For each gap you say whether you have real experience. If you do, a bullet is drafted
+    from your own answers. If you do not, you get a cover letter line and a learning plan
+    instead, and nothing is added to the resume.
+    """
+    from .tailoring import (
+        PROJECTS_ANCHOR,
+        Addition,
+        GapAnswer,
+        TailoringPlan,
+        anchor_options,
+        build_gap_prompts,
+        bullet_index,
+        check_draft,
+        cover_letter_line,
+        draft_bullet,
+        learning_plan,
+        notes_markdown,
+        pdf_available,
+        rescore,
+        to_markdown,
+        to_pdf,
+        to_text,
+    )
+
+    if job == "-":
+        raise click.UsageError("tailor asks questions on stdin, so the job description must be a file.")
+    if not Path(job).is_file():
+        raise click.BadParameter(f"File not found: {job}", param_hint="JOB")
+    try:
+        embedder = get_embedder(backend, model)
+        before = analyze(parse_resume(resume), _load_job(job), embedder=embedder)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    res, plan, notes = before.resume, TailoringPlan(), []
+
+    click.echo(f"\n{before.job_name}: {before.score:.0f}/100 ({before.result.fit_label})\n")
+
+    rewrites = [s for s in before.suggestions if s.has_rewrite]
+    if rewrites:
+        click.secho("Step 1 of 2: suggested edits to existing bullets", bold=True)
+    for n, s in enumerate(rewrites, 1):
+        click.echo(f"\n[{n}/{len(rewrites)}] {s.requirement or 'General polish'}")
+        click.echo(f"  Current:   {s.original}")
+        click.echo(f"  Suggested: {s.suggested}")
+        if s.caution:
+            click.echo(f"  Check:     {s.caution}")
+        choice = click.prompt("  Apply? (y)es, (n)o, (e)dit", type=click.Choice(["y", "n", "e"]), default="n", show_choices=False)
+        text = s.suggested if choice == "y" else click.prompt("  Your version", default=s.suggested) if choice == "e" else None
+        idx = bullet_index(res, s.original)
+        if text and idx is not None:
+            plan.edits[idx] = text
+
+    prompts = build_gap_prompts(before, limit=max_gaps)
+    anchors = anchor_options(res)
+    if prompts:
+        click.secho("\nStep 2 of 2: gaps", bold=True)
+        click.echo("Answer honestly. A bullet is only drafted from what you type.")
+    for n, p in enumerate(prompts, 1):
+        click.echo(f"\n[{n}/{len(prompts)}] {p.requirement}")
+        click.echo(f"  {p.question}")
+        choice = click.prompt("  (y)es, (n)o, (s)kip", type=click.Choice(["y", "n", "s"]), default="s", show_choices=False)
+        if choice == "s":
+            continue
+        if choice == "n":
+            notes.append((p, cover_letter_line(p, res), learning_plan(p)))
+            click.echo("  Noted. You'll get a cover letter line and a learning plan in gap_notes.md.")
+            continue
+        answer = GapAnswer(True)
+        answer.what = click.prompt("  What did you do? (for example: built a pipeline that streams order events)")
+        answer.tools = click.prompt("  Tools or technologies used (Enter to skip)", default=", ".join(p.tools), show_default=bool(p.tools))
+        answer.result = click.prompt("  Result or scale, ideally with a number (Enter to skip)", default="", show_default=False)
+        for i, (_, label) in enumerate(anchors, 1):
+            click.echo(f"    {i}. {label}")
+        default_pos = next((i for i, (key, _) in enumerate(anchors, 1) if key == p.suggested_anchor), len(anchors))
+        pos = click.prompt("  Where does it go?", type=click.IntRange(1, len(anchors)), default=default_pos)
+        answer.anchor = anchors[pos - 1][0]
+        draft = draft_bullet(answer, before.job, res)
+        click.echo(f"  Draft: {draft.text}")
+        for tip in draft.tips:
+            click.echo(f"  Tip:   {tip}")
+        choice = click.prompt("  Add it? (y)es, (n)o, (e)dit", type=click.Choice(["y", "n", "e"]), default="y", show_choices=False)
+        text = draft.text if choice == "y" else click.prompt("  Your version", default=draft.text) if choice == "e" else None
+        if not text:
+            continue
+        problems = check_draft(text, answer, res)
+        if problems and not click.confirm("  " + " ".join(problems) + " Keep it anyway?", default=False):
+            continue
+        plan.additions.append(Addition(answer.anchor or PROJECTS_ANCHOR, text))
+        new = [t for t in p.tools if t.lower() in text.lower()]
+        if new and click.confirm(f"  Also add {', '.join(new)} to your Skills section?", default=True):
+            plan.new_skills += [s for s in new if s not in plan.new_skills]
+
+    after = rescore(res, plan, before.job, embedder)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "tailored_resume.md").write_text(to_markdown(res, plan), encoding="utf-8")
+    (output_dir / "tailored_resume.txt").write_text(to_text(res, plan), encoding="utf-8")
+    written = ["tailored_resume.md", "tailored_resume.txt"]
+    if pdf_available():
+        (output_dir / "tailored_resume.pdf").write_bytes(to_pdf(res, plan))
+        written.append("tailored_resume.pdf")
+    (output_dir / "gap_notes.md").write_text(notes_markdown(before.job_name, notes), encoding="utf-8")
+    written.append("gap_notes.md")
+
+    delta = after.score - before.score
+    click.secho(f"\nScore: {before.score:.0f} -> {after.score:.0f} ({delta:+.0f})", bold=True)
+    click.echo(f"{plan.change_count()} change(s). Wrote {', '.join(written)} to {output_dir}/")
+
+
 @main.command("parse-resume")
 @click.argument("resume", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 def parse_resume_cmd(resume: Path) -> None:

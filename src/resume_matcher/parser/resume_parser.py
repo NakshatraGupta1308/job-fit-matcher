@@ -67,6 +67,21 @@ class Bullet:
 
 
 @dataclass
+class LayoutItem:
+    """One line of the original resume, kept so a tailored copy can be rebuilt in order.
+
+    kind is one of: "heading", "text" (contact lines and other plain text), "context"
+    (job title, company, or date line), "bullet", "line" (skills or education lines), or
+    "paragraph" (prose split into several sentence bullets).
+    """
+
+    kind: str
+    section: str
+    text: str
+    bullet_ids: list[int] = field(default_factory=list)
+
+
+@dataclass
 class Resume:
     raw_text: str
     sections: dict[str, list[str]] = field(default_factory=dict)
@@ -76,6 +91,7 @@ class Resume:
     evidenced_skills: set[str] = field(default_factory=set)  # skills named in experience or project bullets
     years_experience: Optional[float] = None
     source: Optional[str] = None
+    layout: list[LayoutItem] = field(default_factory=list, repr=False)
 
     @property
     def evidence_bullets(self) -> list[Bullet]:
@@ -155,6 +171,7 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
     context: Optional[str] = None
     open_bullet: Optional[Bullet] = None  # the bullet that a wrapped line may continue
     last_was_header = False
+    layout: list[LayoutItem] = []
 
     for raw_line in merge_wrapped_lines(text.split("\n"), lambda l: detect_section(l) is not None):
         line = raw_line.strip()
@@ -165,6 +182,7 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
         section = detect_section(line)
         if section:
             current = section
+            layout.append(LayoutItem("heading", section, clean_markdown(line).strip(":").strip()))
             sections.setdefault(current, [])
             context = None
             open_bullet = None
@@ -175,6 +193,7 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
         sections.setdefault(current, []).append(cleaned)
 
         if current == "header":
+            layout.append(LayoutItem("text", current, cleaned))
             continue
 
         if is_bullet(line):
@@ -183,6 +202,7 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
                 continue
             open_bullet = Bullet(content, current, context)
             bullets.append(open_bullet)
+            layout.append(LayoutItem("bullet", current, content, [len(bullets) - 1]))
             continue
 
         # Continuation of a bullet that wrapped onto the next line.
@@ -193,21 +213,27 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
         open_bullet = None
         if current == "skills":
             bullets.append(Bullet(cleaned, current, None))
+            layout.append(LayoutItem("line", current, cleaned, [len(bullets) - 1]))
             continue
 
         if current in ("experience", "projects", "volunteering") and _looks_like_entry_header(cleaned):
             # Title, company, and dates often span consecutive lines; keep them together.
             context = f"{context} | {cleaned}" if was_header and context else cleaned
             last_was_header = True
+            layout.append(LayoutItem("context", current, cleaned))
             continue
 
         if current == "education" and word_count(cleaned) <= 14:
             bullets.append(Bullet(cleaned, current, None))
+            layout.append(LayoutItem("line", current, cleaned, [len(bullets) - 1]))
             continue
 
+        ids = []
         for sentence in split_sentences(cleaned):
             if word_count(sentence) >= 3:
                 bullets.append(Bullet(sentence, current, context))
+                ids.append(len(bullets) - 1)
+        layout.append(LayoutItem("paragraph" if ids else "text", current, cleaned, ids))
 
     listed = set()
     for line in sections.get("skills", []):
@@ -228,6 +254,7 @@ def parse_resume_text(text: str, source: Optional[str] = None) -> Resume:
         evidenced_skills=evidenced,
         years_experience=estimate_years(text, sections.get("experience", [])),
         source=source,
+        layout=layout,
     )
 
 

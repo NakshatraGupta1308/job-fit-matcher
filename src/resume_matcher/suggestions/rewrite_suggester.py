@@ -131,9 +131,9 @@ def align_terminology(text: str, job: JobDescription) -> tuple[str, list[tuple[s
     out = text
     for m in reversed(find_skill_mentions(text)):
         target = job.skill_surface_forms.get(m.skill)
-        if not target or target.lower() == m.surface.lower():
+        if not target or target == m.surface:
             continue
-        if target.lower() in m.surface.lower() or len(target) > 40:
+        if (target.lower() != m.surface.lower() and target.lower() in m.surface.lower()) or len(target) > 40:
             continue
         out = out[: m.start] + target + out[m.end :]
         swaps.append((m.surface, target))

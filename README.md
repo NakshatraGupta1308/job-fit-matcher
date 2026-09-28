@@ -29,6 +29,18 @@ For each job description, a report with:
 
 See [`examples/sample_report.md`](examples/sample_report.md) for a full report.
 
+### Tailor your resume and close gaps honestly
+
+After the report, you can build a tailored version of your resume for that job:
+
+1. **Accept edits.** Apply, tweak, or skip each suggested rewrite.
+2. **Fill the gaps.** For every gap, you answer one question: have you actually done this?
+   - **Yes:** you describe what you did, the tools, and the result in your own words, pick which job or the Projects section it belongs to, and a bullet is drafted in the posting's language (for example "Built an event pipeline for order updates using Kafka, processing 2M events per day"). You can also add the tool to your Skills section.
+   - **No:** nothing is added to your resume. You get an honest cover letter line that points to related experience you do have, plus a short plan (tutorial and a concrete project idea) to build real experience.
+3. **See the result.** The score is recalculated live as you go, and you can download the tailored resume as Markdown, text, or PDF, plus a `gap_notes.md` with your cover letter lines and learning plans.
+
+Drafted bullets are built only from your answers. A check rejects any draft that names a skill that is not in your answers or already in your resume.
+
 ### The no-fabrication rule
 
 Suggestions are built only from what is already in the resume: the original bullet, skills the resume already mentions somewhere, and the job description's spelling of those same skills. A final guard throws away any suggested text that would name a skill the resume does not contain, and the test suite checks this on every run. When a requirement is genuinely missing, the tool says so and does not offer a rewrite.
@@ -73,6 +85,10 @@ resume-matcher history
 # Inspect what the parsers extracted
 resume-matcher parse-resume resume.pdf
 resume-matcher parse-job job.txt
+
+# Walk through edits and gaps interactively, then write a tailored resume
+resume-matcher tailor resume.pdf job.txt -d tailored/
+#   -> tailored/tailored_resume.md, .txt, .pdf and tailored/gap_notes.md
 ```
 
 Useful options:
@@ -95,7 +111,7 @@ History lives in `~/.resume_matcher/history.jsonl` by default (override with `RE
 streamlit run app/streamlit_app.py
 ```
 
-Upload a resume (PDF, TXT, or MD) or paste it, paste one or more job descriptions, and get the scores, requirement table, missing keywords, suggestions, and markdown/text/JSON downloads. Several postings are ranked side by side.
+Upload a resume (PDF, TXT, or MD) or paste it, paste one or more job descriptions, and get the scores, requirement table, missing keywords, suggestions, and markdown/text/JSON downloads. Several postings are ranked side by side. Under each job's report, the **Tailor your resume for this job** panel walks through edits and gaps with a live before and after score.
 
 ### From Python
 
@@ -161,10 +177,12 @@ src/resume_matcher/
   suggestions/             gap analysis and rewrite suggestions
   report/                  markdown, text, and JSON rendering
   analysis.py              end-to-end pipeline
+  tailoring/               gap questions, bullet drafting, cover letter lines, tailored resume export
   history.py               local score history
   skills.py                skill vocabulary and matching
   cli.py                   command line interface
 app/streamlit_app.py       web UI
+app/tailor_panel.py        the tailoring panel in the web UI
 tests/                     pytest suite
 ```
 
